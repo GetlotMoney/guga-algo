@@ -47,7 +47,7 @@
 
 .digit .tag {
   position: absolute;
-  top: -16px;
+  top: -22px;
   font-size: 9px;
   font-weight: 700;
   color: var(--muted-foreground);
