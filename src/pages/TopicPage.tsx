@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { getTopicById } from '@/content/topics-registry'
 import type { TopicMeta } from '@/content/topics-registry'
-import { TopicSidebarNav } from '@/components/layout/TopicSidebarNav'
+import { TopicSidebar } from '@/components/layout/TopicSidebar'
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer'
 import { extractHeadings } from '@/lib/extract-headings'
 import { Badge } from '@/components/ui/badge'
@@ -38,32 +38,57 @@ export default function TopicPage() {
   const topic = topicId ? getTopicById(topicId) : undefined
   const reduce = useReducedMotion()
 
-  // 侧栏可拖拽宽度
+  // 左侧栏宽度（可拖拽）
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebar-width')
-    return saved ? parseInt(saved) : 256
+    return saved ? parseInt(saved) : 260
   })
-  const resizing = useRef(false)
 
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    resizing.current = true
-    const startX = e.clientX
-    const startWidth = sidebarWidth
+  // 右侧内容区最大宽度（可拖拽）
+  const [contentMaxWidth, setContentMaxWidth] = useState(() => {
+    const saved = localStorage.getItem('content-max-width')
+    return saved ? parseInt(saved) : 900
+  })
 
-    const onMove = (ev: MouseEvent) => {
-      const newWidth = Math.max(180, Math.min(500, startWidth + ev.clientX - startX))
-      setSidebarWidth(newWidth)
+  // 通用拖拽处理
+  const createResizeHandler = useCallback((
+    getValue: () => number,
+    setValue: (v: number) => void,
+    min: number,
+    max: number,
+    storageKey: string,
+    direction: 'left' | 'right' = 'right',
+  ) => {
+    return (e: React.MouseEvent) => {
+      e.preventDefault()
+      const startX = e.clientX
+      const startVal = getValue()
+
+      const onMove = (ev: MouseEvent) => {
+        const delta = direction === 'right'
+          ? ev.clientX - startX
+          : startX - ev.clientX
+        const newVal = Math.max(min, Math.min(max, startVal + delta))
+        setValue(newVal)
+      }
+      const onUp = () => {
+        localStorage.setItem(storageKey, String(getValue()))
+        document.removeEventListener('mousemove', onMove)
+        document.removeEventListener('mouseup', onUp)
+      }
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup', onUp)
     }
-    const onUp = () => {
-      resizing.current = false
-      localStorage.setItem('sidebar-width', String(sidebarWidth))
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-    }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  }, [sidebarWidth])
+  }, [])
+
+  const handleSidebarResize = useMemo(
+    () => createResizeHandler(() => sidebarWidth, setSidebarWidth, 200, 500, 'sidebar-width', 'right'),
+    [createResizeHandler, sidebarWidth],
+  )
+  const handleContentResize = useMemo(
+    () => createResizeHandler(() => contentMaxWidth, setContentMaxWidth, 500, 1400, 'content-max-width', 'right'),
+    [createResizeHandler, contentMaxWidth],
+  )
 
   // 获取该专题的全部 markdown 内容 + 提取标题层级
   const content = useMemo(() => (topicId ? getMd(topicId) : ''), [topicId])
@@ -84,21 +109,28 @@ export default function TopicPage() {
 
   return (
     <div className="flex w-full">
-      {/* 侧栏目录：贴左边，可拖拽宽度 */}
+      {/* 左侧栏：全部专题 + 当前专题章节 */}
       <aside
         className="sticky top-14 hidden h-[calc(100svh-3.5rem)] shrink-0 overflow-y-auto border-r border-border bg-background/50 px-3 py-6 md:block"
         style={{ width: sidebarWidth }}
       >
-        <TopicSidebarNav headings={headings} />
+        <TopicSidebar
+          currentTopicId={topicId ?? ''}
+          headings={headings}
+        />
       </aside>
 
-      {/* 拖拽手柄 */}
+      {/* 左侧拖拽手柄 */}
       <div
         className="hidden w-1.5 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-primary/30 md:block"
-        onMouseDown={handleResizeStart}
+        onMouseDown={handleSidebarResize}
       />
 
-      <main className="min-w-0 flex-1 py-10 pl-6 pr-6 md:pl-10 md:pr-10">
+      {/* 内容区 */}
+      <main
+        className="min-w-0 flex-1 py-10 pl-6 pr-6 md:pl-10 md:pr-10"
+        style={{ maxWidth: contentMaxWidth }}
+      >
         {/* 专题头部 */}
         <div className="mb-8">
           <Link
@@ -125,7 +157,7 @@ export default function TopicPage() {
           </p>
         </div>
 
-        {/* 章节内容：整体渲染 00-overview.md */}
+        {/* 章节内容 */}
         {content ? (
           <motion.section
             id="overview"
@@ -145,6 +177,14 @@ export default function TopicPage() {
           </Card>
         )}
       </main>
+
+      {/* 右侧拖拽手柄 */}
+      <div
+        className="hidden w-1.5 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-primary/30 md:block"
+        onMouseDown={handleContentResize}
+      />
+      {/* 右侧留白区 */}
+      <div className="hidden flex-1 md:block" />
     </div>
   )
 }
