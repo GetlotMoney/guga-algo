@@ -1,12 +1,13 @@
 import { useMemo, useState, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Lock } from 'lucide-react'
 import { getTopicById } from '@/content/topics-registry'
 import type { TopicMeta } from '@/content/topics-registry'
 import { TopicSidebar } from '@/components/layout/TopicSidebar'
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer'
 import { extractHeadings } from '@/lib/extract-headings'
+import { useAuth } from '@/hooks/useAuth'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -37,17 +38,12 @@ export default function TopicPage() {
   const { topicId } = useParams<{ topicId: string }>()
   const topic = topicId ? getTopicById(topicId) : undefined
   const reduce = useReducedMotion()
+  const { user, loading } = useAuth()
 
   // 左侧栏宽度（可拖拽）
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebar-width')
     return saved ? parseInt(saved) : 260
-  })
-
-  // 右侧内容区最大宽度（可拖拽）
-  const [contentMaxWidth, setContentMaxWidth] = useState(() => {
-    const saved = localStorage.getItem('content-max-width')
-    return saved ? parseInt(saved) : 900
   })
 
   // 通用拖拽处理
@@ -57,7 +53,6 @@ export default function TopicPage() {
     min: number,
     max: number,
     storageKey: string,
-    direction: 'left' | 'right' = 'right',
   ) => {
     return (e: React.MouseEvent) => {
       e.preventDefault()
@@ -65,9 +60,7 @@ export default function TopicPage() {
       const startVal = getValue()
 
       const onMove = (ev: MouseEvent) => {
-        const delta = direction === 'right'
-          ? ev.clientX - startX
-          : startX - ev.clientX
+        const delta = ev.clientX - startX
         const newVal = Math.max(min, Math.min(max, startVal + delta))
         setValue(newVal)
       }
@@ -82,17 +75,28 @@ export default function TopicPage() {
   }, [])
 
   const handleSidebarResize = useMemo(
-    () => createResizeHandler(() => sidebarWidth, setSidebarWidth, 200, 500, 'sidebar-width', 'right'),
+    () => createResizeHandler(() => sidebarWidth, setSidebarWidth, 200, 500, 'sidebar-width'),
     [createResizeHandler, sidebarWidth],
-  )
-  const handleContentResize = useMemo(
-    () => createResizeHandler(() => contentMaxWidth, setContentMaxWidth, 500, 1400, 'content-max-width', 'right'),
-    [createResizeHandler, contentMaxWidth],
   )
 
   // 获取该专题的全部 markdown 内容 + 提取标题层级
   const content = useMemo(() => (topicId ? getMd(topicId) : ''), [topicId])
   const headings = useMemo(() => extractHeadings(content), [content])
+
+  // 鉴权：未登录不能看教程内容
+  if (!loading && !user) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-32 text-center">
+        <Lock className="mb-4 h-12 w-12 text-muted-foreground" />
+        <h1 className="text-2xl font-bold">请先登录</h1>
+        <p className="mt-2 text-muted-foreground">登录后即可查看教程内容</p>
+        <div className="mt-6 flex gap-3">
+          <Button nativeButton={false} render={<Link to="/login" />}>登录</Button>
+          <Button variant="outline" nativeButton={false} render={<Link to="/register" />}>注册</Button>
+        </div>
+      </div>
+    )
+  }
 
   if (!topic) {
     return (
@@ -127,10 +131,7 @@ export default function TopicPage() {
       />
 
       {/* 内容区 */}
-      <main
-        className="min-w-0 flex-1 py-10 pl-6 pr-6 md:pl-10 md:pr-10"
-        style={{ maxWidth: contentMaxWidth }}
-      >
+      <main className="min-w-0 flex-1 py-10 pl-6 pr-6 md:pl-10 md:pr-10">
         {/* 专题头部 */}
         <div className="mb-8">
           <Link
@@ -177,14 +178,6 @@ export default function TopicPage() {
           </Card>
         )}
       </main>
-
-      {/* 右侧拖拽手柄 */}
-      <div
-        className="hidden w-1.5 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-primary/30 md:block"
-        onMouseDown={handleContentResize}
-      />
-      {/* 右侧留白区 */}
-      <div className="hidden flex-1 md:block" />
     </div>
   )
 }

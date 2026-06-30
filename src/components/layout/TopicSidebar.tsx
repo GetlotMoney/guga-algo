@@ -98,7 +98,7 @@ export function TopicSidebar({ currentTopicId, headings, onNavigate }: Props) {
             {/* 分类标题：可展开/折叠 */}
             <button
               onClick={() => toggleCategory(category)}
-              className="flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex w-full items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               {isCatExpanded ? (
                 <ChevronDown className="h-3.5 w-3.5" />
@@ -133,7 +133,7 @@ export function TopicSidebar({ currentTopicId, headings, onNavigate }: Props) {
                           to={`/topics/${t.id}`}
                           onClick={onNavigate}
                           className={cn(
-                            'flex-1 truncate rounded-md px-3 py-1.5 text-sm transition-colors',
+                            'flex-1 truncate rounded-md px-3 py-2 text-[15px] transition-colors',
                             isCurrent
                               ? 'bg-primary/10 font-medium text-primary'
                               : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -156,7 +156,7 @@ export function TopicSidebar({ currentTopicId, headings, onNavigate }: Props) {
                                 href={`#${parent.id}`}
                                 onClick={(e) => handleHeadingClick(e, parent.id)}
                                 className={cn(
-                                  'block truncate rounded-md py-1 pl-4 pr-3 text-sm transition-colors',
+                                  'block truncate rounded-md py-1.5 pl-4 pr-3 text-sm transition-colors',
                                   activeHeadingId === parent.id
                                     ? 'font-medium text-primary'
                                     : 'text-muted-foreground hover:text-foreground',
@@ -170,7 +170,7 @@ export function TopicSidebar({ currentTopicId, headings, onNavigate }: Props) {
                                   href={`#${child.id}`}
                                   onClick={(e) => handleHeadingClick(e, child.id)}
                                   className={cn(
-                                    'block truncate rounded-md py-0.5 pl-8 pr-3 text-xs transition-colors',
+                                    'block truncate rounded-md py-1 pl-8 pr-3 text-[13px] transition-colors',
                                     activeHeadingId === child.id
                                       ? 'font-medium text-primary'
                                       : 'text-muted-foreground/80 hover:text-foreground',
